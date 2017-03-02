@@ -82,7 +82,8 @@ export default class XFileSystem {
       let args = Array.prototype.slice.call(arguments, 1, arguments.length - 1);
       let callback = arguments[arguments.length - 1];
       if (typeof path != 'string') {
-        return callback(new TypeError('path must be a string'));
+        setImmediate(() => callback(new TypeError('path must be a string')));
+        return
       }
       if (typeof callback != 'function') {
         args.push(callback);
@@ -92,10 +93,10 @@ export default class XFileSystem {
       try {
         result = fs[fn + "Sync"](path, ...args);
       } catch (e) {
-        callback(e);
+        setImmediate(() => callback(e));
         return;
       }
-      callback(null, result);
+      setImmediate(() => callback(null, result));
     }
   };
   _remote = (fn, shouldBeDir) => {
@@ -117,7 +118,10 @@ export default class XFileSystem {
         result = fs[fn + 'Sync'](abspath, ...args);
       } catch (e) {
         
-        if (!inLib(abspath)) return callback(e);
+        if (!inLib(abspath)) {
+          setImmediate(() => callback(e));
+          return;
+        }
         fs._fetch(abspath.substr(libPrefixLength), shouldBeDir)
           .then((textOrArray) => {
             if (shouldBeDir) {
@@ -151,7 +155,7 @@ export default class XFileSystem {
           .catch((e2) => callback(e));
         return;
       }
-      callback(null, result)
+      setImmediate(() => callback(null, result));
     }
   };
   
@@ -337,6 +341,7 @@ export default class XFileSystem {
     }
     return encoding ? current.toString(encoding) : current;
   }
+  
   readlink = this._syncToCb('readlink');
   readlinkSync = NotImplemented;
   readSync = NotImplemented;
