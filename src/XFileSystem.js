@@ -200,15 +200,15 @@ export default class XFileSystem {
     this._emit(abspath, dirpath, filename, 'rename');
   }
   
-  access = NotImplemented;
+  access = this._syncToCb('access');
   accessSync = NotImplemented;
-  appendFile = NotImplemented;
+  appendFile = this._syncToCb('appendFile');
   appendFileSync = NotImplemented;
-  chmod = NotImplemented;
+  chmod = this._syncToCb('chmod');
   chmodSync = NotImplemented;
-  chown = NotImplemented;
+  chown = this._syncToCb('chown');
   chownSync = NotImplemented;
-  close = NotImplemented;
+  close = this._syncToCb('close');
   closeSync = NotImplemented;
   
   get constants() {
@@ -219,27 +219,27 @@ export default class XFileSystem {
   createWriteStream = NotImplemented;
   exists = NotImplemented;
   existsSync = (p) => exists(this._meta(p));
-  fchmod = NotImplemented;
+  fchmod = this._syncToCb('fchmod');
   fchmodSync = NotImplemented;
-  fchown = NotImplemented;
+  fchown = this._syncToCb('fchown');
   fchownSync = NotImplemented;
-  fdatasync = NotImplemented;
+  fdatasync = this._syncToCb('fdatasync');
   fdatasyncSync = NotImplemented;
-  fstat = NotImplemented;
+  fstat = this._syncToCb('fstat');
   fstatSync = NotImplemented;
-  fsync = NotImplemented;
+  fsync = this._syncToCb('fsync');
   fsyncSync = NotImplemented;
-  ftruncate = NotImplemented;
+  ftruncate = this._syncToCb('ftruncate');
   ftruncateSync = NotImplemented;
-  futimes = NotImplemented;
+  futimes = this._syncToCb('futimes');
   futimesSync = NotImplemented;
-  lchmod = NotImplemented;
+  lchmod = this._syncToCb('lchmod');
   lchmodSync = NotImplemented;
-  lchown = NotImplemented;
+  lchown = this._syncToCb('lchown');
   lchownSync = NotImplemented;
-  link = NotImplemented;
+  link = this._syncToCb('link');
   linkSync = NotImplemented;
-  lstat = this._syncToCb('lstat', 'any');
+  lstat = this._syncToCb('lstat');
   
   lstatSync(_path) {
     let abspath = normalize(_path);
@@ -310,11 +310,11 @@ export default class XFileSystem {
     return current;
   }
   
-  mkdtemp = NotImplemented;
+  mkdtemp = this._syncToCb('mkdtemp');
   mkdtempSync = NotImplemented;
-  open = NotImplemented;
+  open = this._syncToCb('open');
   openSync = NotImplemented;
-  read = NotImplemented;
+  read = this._syncToCb('read');
   readdir = this._remote('readdir', true);
   
   readdirSync(path) {
@@ -337,25 +337,25 @@ export default class XFileSystem {
     }
     return encoding ? current.toString(encoding) : current;
   }
-  readlink = NotImplemented;
+  readlink = this._syncToCb('readlink');
   readlinkSync = NotImplemented;
   readSync = NotImplemented;
   realpath = this._syncToCb('realpath');
   realpathSync = normalize;
-  rename = NotImplemented;
+  rename = this._syncToCb('rename');
   renameSync = NotImplemented;
   rmdir = this._syncToCb('rmdir');
   rmdirSync = (path) => this._remove(path, isDir);
   stat = this._syncToCb('stat');
   statSync = this.lstatSync;
-  symlink = NotImplemented;
+  symlink = this._syncToCb('symlink');
   symlinkSync = NotImplemented;
-  truncate = NotImplemented;
+  truncate = this._syncToCb('truncate');
   truncateSync = NotImplemented;
   unlink = this._syncToCb('unlink');
   unlinkSync = (path) => this._remove(path, isFile);
   unwatchFile = NotImplemented;
-  utimes = NotImplemented;
+  utimes = this._syncToCb('utimes');
   utimesSync = NotImplemented;
   
   watch(filename, options, listener) {
