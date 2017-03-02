@@ -81,8 +81,8 @@ export default class XFileSystem {
       let path = arguments[0];
       let args = Array.prototype.slice.call(arguments, 1, arguments.length - 1);
       let callback = arguments[arguments.length - 1];
-      if (!path || !(typeof path == 'string')) {
-        throw new TypeError('path must be a string');
+      if (typeof path != 'string') {
+        callback(new TypeError('path must be a string'));
       }
       if (typeof callback != 'function') {
         args.push(callback);
