@@ -103,6 +103,12 @@ describe('XFileSystem', () => {
       // })
     })
   });
+  it('readFile should fail on top node_model level', (done) => {
+    fs.readFile('/node_modules/package.json', (err, res) => {
+      expect(err.message).to.equal('illegal operation on a directory');
+      done();
+    })
+  });
   
   it('readdirSync', () => {
     fs.writeFileSync('/sub/a.js', '123');
