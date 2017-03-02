@@ -122,17 +122,14 @@ export default class XFileSystem {
           setImmediate(() => callback(e));
           return;
         }
-        let top = false;
-        if (abspath.substr(libPrefixLength + 1).indexOf('/') < 0) {
-          shouldBeDir = true;
-          top = true;
+        
+        if (abspath.substr(libPrefixLength + 1).indexOf('/') < 0 && shouldBeDir == false) {
+          setImmediate(() => callback(new XFileSystemError(errors.code.EISDIR, abspath)));
+          return;
         }
         fs._fetch(abspath.substr(libPrefixLength), shouldBeDir)
           .then((textOrArray) => {
-            if (top) {
-              if (!(textOrArray.includes('package.json'))) {
-                throw new XFileSystemError(errors.code.EISDIR, abspath);
-              }
+            if (shouldBeDir) {
               let dir = fs.mkdirpSync(abspath);
               dir[''] = true;
               for (let sub of textOrArray) {
