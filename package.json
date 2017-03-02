@@ -1,5 +1,5 @@
 {
-  "name": "xFileSystem",
+  "name": "x-filesystem",
   "version": "0.0.1",
   "description": "In memory file system with node_module mapping to unpkg.com",
   "main": "index.js",
