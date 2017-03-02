@@ -38,10 +38,9 @@ describe('XFileSystem', () => {
       expect(err).to.equal(null);
       expect(fs.data['a.js'].toString()).to.equal('123');
     });
+    
     fs.writeFile('/a.js', '456');
-    
     expect(fs.data['a.js'].toString()).to.equal('456');
-    
     
     fs.writeFile('/a.js/b', '123', (err) => {
       expect(err.message).to.equal('file already exists');

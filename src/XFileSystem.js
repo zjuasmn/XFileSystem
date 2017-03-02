@@ -82,7 +82,7 @@ export default class XFileSystem {
       let args = Array.prototype.slice.call(arguments, 1, arguments.length - 1);
       let callback = arguments[arguments.length - 1];
       if (typeof path != 'string') {
-        callback(new TypeError('path must be a string'));
+        return callback(new TypeError('path must be a string'));
       }
       if (typeof callback != 'function') {
         args.push(callback);
@@ -117,7 +117,7 @@ export default class XFileSystem {
         result = fs[fn + 'Sync'](abspath, ...args);
       } catch (e) {
         
-        if (!inLib(abspath)) callback(e);
+        if (!inLib(abspath)) return callback(e);
         fs._fetch(abspath.substr(libPrefixLength), shouldBeDir)
           .then((textOrArray) => {
             if (shouldBeDir) {
@@ -128,7 +128,7 @@ export default class XFileSystem {
                   sub = sub.substr(0, sub.length - 1);
                   if (dir[sub]) {
                     if (!isDir(dir[sub])) {
-                      callback(new XFileSystemError(errors.code.EEXIST, abspath + '/' + sub))
+                      return callback(new XFileSystemError(errors.code.EEXIST, abspath + '/' + sub))
                     }
                   } else {
                     this._write(dir, abspath + '/' + sub, {'': null});
