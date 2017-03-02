@@ -337,7 +337,9 @@ export default class XFileSystem {
     }
     return encoding ? current.toString(encoding) : current;
   }
-  
+  readlink = NotImplemented;
+  readlinkSync = NotImplemented;
+  readSync = NotImplemented;
   realpath = this._syncToCb('realpath');
   realpathSync = normalize;
   rename = NotImplemented;
