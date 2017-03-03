@@ -26,7 +26,20 @@ describe('fetchUnpkg', () => {
       expect(err.message).to.contains('NOT FOUND');
       done();
     })
-  })
+  });
+  it('can return file multiple times', (done) => {
+    let cnt = 0;
+    let f = (text) =>{
+      if (++cnt == 4){
+        done();
+      }
+      expect(text).to.contains('jQuery');
+    };
+    fetchUnpkg('/jquery/src/jquery.js').then(f);
+    fetchUnpkg('/jquery/src/jquery.js').then(f);
+    fetchUnpkg('/jquery/src/jquery.js').then(f);
+    fetchUnpkg('/jquery/src/jquery.js').then(f);
+  });
 });
 
 describe('getModuleName',()=>{
