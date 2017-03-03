@@ -406,23 +406,10 @@ export default class XFileSystem {
   writeFileSync(_path, content, options) {
     let abspath = normalize(_path);
     let encoding = typeof options == 'object' ? options.encoding : options;
-    let path = pathToArray(abspath);
-    if (path.length === 0) {
-      throw new XFileSystemError(errors.code.EISDIR, abspath);
-    }
-    let local = path[0] != node_modules ? true : null;
-    let current = this.data;
-    for (let i = 0; i < path.length - 1; i++) {
-      if (isFile(current[path[i]])) {
-        throw new XFileSystemError(errors.code.EEXIST, abspath);
-      } else if (isDir(current[path[i]])) {
-        current = current[path[i]];
-      } else {
-        current[path[i]] = {'': local};
-        current = current[path[i]];
-      }
-    }
-    if (isDir(current[path[path.length - 1]])) {
+    let dirpath = dirname(abspath);
+    let filename = basename(abspath);
+    let current = this.mkdirpSync(dirpath);
+    if (!filename || isDir(current[filename])){
       throw new XFileSystemError(errors.code.EISDIR, abspath);
     }
     this._write(current, abspath, encoding || typeof content === "string" ? new Buffer(content, encoding) : content)

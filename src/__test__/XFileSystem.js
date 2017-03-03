@@ -30,7 +30,7 @@ describe('XFileSystem', () => {
     // cannot write to dir
     expect(() => fs.writeFileSync('/sub', '456')).to.throw('illegal operation on a directory');
     expect(() => fs.writeFileSync('/', '456')).to.throw('illegal operation on a directory');
-    expect(() => fs.writeFileSync('/a.js/b.js', '456')).to.throw('file already exists');
+    expect(() => fs.writeFileSync('/a.js/b.js', '456')).to.throw('not a directory');
   });
   
   it('writeFile should work', (done) => {
@@ -73,6 +73,9 @@ describe('XFileSystem', () => {
     let dir = fs.mkdirpSync('/a/b/c');
     expect(dir).to.deep.equal({"": true});
     expect(fs.data.a.b.c).to.equal(dir);
+    expect('/a' in fs._stats).to.equal(true);
+    expect('/a/b' in fs._stats).to.equal(true);
+    expect('/a/b/c' in fs._stats).to.equal(true);
     expect(fs.mkdirpSync('/a/b/c')).to.equal(dir);
     fs.writeFileSync('/sub', '123');
     expect(() => fs.mkdirpSync('/sub/a')).to.throw('not a directory');
