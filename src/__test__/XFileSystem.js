@@ -192,6 +192,17 @@ describe('XFileSystem', () => {
       });
     })
   });
+  
+  it('toString and parse should work',()=>{
+    fs.writeFileSync('/a/b/c','123中文');
+    let s = fs.toString();
+    expect(s.length).to.equal(52);
+    // console.log(s);
+    let nfs = new XFileSystem();
+    nfs.parse(JSON.parse(s));
+    expect(nfs.readFileSync('/a/b/c','utf8') == '123中文');
+  });
+  
   it('should have all fs methods', () => {
     let fsMethods = [
       "access",

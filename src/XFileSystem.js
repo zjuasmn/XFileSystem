@@ -52,7 +52,7 @@ const FILEMODE = 33188;// Oct 100644
 
 export default class XFileSystem {
   data = {'': true};
-  _stats = {'/': {birthtime: new Date(), mode: 16877, atime: new Date(), mtime: new Date(), ctime: new Date()}};
+  _stats = {'/': {birthtime: new Date(), mode: DIRMODE, _time: new Date()}};
   _watcher = {};
   _fetch;
   
@@ -61,12 +61,7 @@ export default class XFileSystem {
     this.mkdirSync(node_modules);
     this.data.node_modules[''] = null;
   }
-  
-  /**
-   * helper method
-   * @param abspath
-   * @returns {*}
-   */
+
   _meta(abspath) {
     const path = pathToArray(abspath);
     let current = this.data;
@@ -409,13 +404,38 @@ export default class XFileSystem {
     let dirpath = dirname(abspath);
     let filename = basename(abspath);
     let current = this.mkdirpSync(dirpath);
-    if (!filename || isDir(current[filename])){
+    if (!filename || isDir(current[filename])) {
       throw new XFileSystemError(errors.code.EISDIR, abspath);
     }
     this._write(current, abspath, encoding || typeof content === "string" ? new Buffer(content, encoding) : content)
   }
   
   writeSync = NotImplemented;
+  
+  toString() {
+    let obj = {};
+    for (let path in this._stats) {
+      if (isReservePath(path)) continue;
+      let stat = this._stats[path];
+      if (stat.mode == FILEMODE) {
+        obj[path] = {f: this.readFileSync(path, 'utf8')};
+      } else {
+        obj[path] = {d: this._meta(path)[""] ? 1 : 0};
+      }
+    }
+    return JSON.stringify(obj);
+  }
+  
+  parse(o) {
+    for (let path in o) {
+      let x = o[path];
+      if ('f' in x) {
+        this.writeFileSync(path, x.f);
+      } else if ('d' in x) {
+        this.mkdirpSync(path)[""] = x.d ? true : null;
+      }
+    }
+  }
 }
 
 XFileSystem.FSWatch = FSWatcher;
