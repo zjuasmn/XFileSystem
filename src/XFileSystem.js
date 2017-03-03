@@ -47,6 +47,9 @@ export function inLib(path) {
 }
 const libPrefixLength = node_modules.length + 1;
 
+const DIRMODE = 16877;// Oct 40755
+const FILEMODE = 33188;// Oct 100644
+
 export default class XFileSystem {
   data = {'': true};
   _stats = {'/': {birthtime: new Date(), mode: 16877, atime: new Date(), mtime: new Date(), ctime: new Date()}};
@@ -118,6 +121,7 @@ export default class XFileSystem {
       try {
         result = fs[fn + 'Sync'](abspath, ...args);
       } catch (e) {
+        // TODO: only handle not found error
         if (!inLib(abspath)) {
           setImmediate(() => callback(e));
           return;
@@ -187,20 +191,13 @@ export default class XFileSystem {
     let filename = basename(abspath);
     current[filename] = content;
     
-    let createNew = !this._stats[abspath];
-    let stats = createNew
-      ? {
-        birthtime: new Date(),
-        mode: isDir(content) ? 16877 /* Oct 40755 */ : 33188 /* Oct 100644 */
-      }
-      : this._stats[abspath];
+    let createNew = false;
+    if (!this._stats[abspath]) {
+      createNew = true;
+      this._stats[abspath] = {birthtime: new Date(), mode: isDir(content) ? DIRMODE : FILEMODE};
+    }
+    this._stats[abspath]._time = new Date();
     
-    this._stats[abspath] = {
-      ...stats,
-      atime: new Date(),
-      mtime: new Date(),
-      ctime: new Date(),
-    };
     this._emit(abspath, dirpath, filename, createNew ? 'rename' : 'change');
     return content;
   }
@@ -263,24 +260,26 @@ export default class XFileSystem {
   linkSync = NotImplemented;
   lstat = this._remote('lstat');
   
-  lstatSync(_path) {
-    let abspath = normalize(_path);
-    let current = this._meta(abspath);
-    if (!isDir(current) && !isFile(current)) {
-      throw new XFileSystemError(errors.code.ENOENT, _path);
+  lstatSync(path) {
+    const abspath = normalize(path);
+    const stats = this._stats[abspath];
+    if (!stats) {
+      throw new XFileSystemError(errors.code.ENOENT, abspath);
     }
-    let stats = {
-      isFile: falseFn,
-      isDirectory: falseFn,
+    let time = stats.time;
+    return {
       isBlockDevice: falseFn,
       isCharacterDevice: falseFn,
       isSymbolicLink: falseFn,
       isFIFO: falseFn,
       isSocket: falseFn,
-      ...this._stats[abspath]
-    };
-    stats[isDir(current) ? 'isDirectory' : 'isFile'] = trueFn;
-    return stats;
+      atime: time,
+      mtime: time,
+      ctime: time,
+      isDirectory: stats.mode == DIRMODE ? trueFn : falseFn,
+      isFile: stats.mode == FILEMODE ? trueFn : falseFn,
+      ...stats,
+    }
   };
   
   mkdir = this._syncToCb('mkdir');
@@ -317,15 +316,15 @@ export default class XFileSystem {
     let currentPath = '/';
     let local = path[0] != node_modules ? true : null;
     for (let token of path) {
+      if (currentPath != '/') {
+        currentPath += '/';
+      }
+      currentPath += token;
       if (isFile(current[token])) {
         throw new XFileSystemError(errors.code.ENOTDIR, abspath);
       } else if (isDir(current[token])) {
         current = current[token];
       } else {
-        if (currentPath != '/') {
-          currentPath += '/';
-        }
-        currentPath += token;
         current = this._write(current, currentPath, {'': local});
       }
     }

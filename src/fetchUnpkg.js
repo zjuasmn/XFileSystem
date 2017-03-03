@@ -14,7 +14,10 @@ export default function fetchUnpkg(abspath, shouldBeDir) {
       }
     }).then(text => {
       if (shouldBeDir) {
-        return text.match(/href="([^"]+)/g).map(s => s.substr(6));
+        return text
+          .match(/href="([^"]+)/g)
+          .map(s => s.substr(6))
+          .filter(s => s != '..');
       } else {
         return text;
       }
