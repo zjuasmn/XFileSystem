@@ -104,7 +104,23 @@ describe('XFileSystem', () => {
       //   expect(err.message).to.equal('illegal operation on a directory');
       done();
       // })
-    })
+    });
+  });
+  it('readFile should only fetch remote when error is notfound', () => {
+    fs.readFile('/node_modules/jquery/src/jquery.js', (err, res) => {
+      expect(err).to.equal(null);
+      expect(res.toString()).to.contains('jQuery');
+      
+      fs._fetch = () => {
+        throw new Error('should not be called')
+      };
+      fs.readFile('/node_modules/jquery/src/jquery.js/package.json', (err, res) => {
+        // fs.readFile('/node_modules/jquery/src', (err, res) => {
+        //   expect(err.message).to.equal('illegal operation on a directory');
+        expect(err.message).to.equal('??');
+        done();
+      })
+    });
   });
   it('readFile should fail on top node_model level', (done) => {
     fs.readFile('/node_modules/package.json', (err, res) => {
@@ -193,14 +209,16 @@ describe('XFileSystem', () => {
     })
   });
   
-  it('toString and parse should work',()=>{
-    fs.writeFileSync('/a/b/c','123中文');
+  it('toString and parse should work', () => {
+    fs.writeFileSync('/a/b/c', '123中文');
+    fs.writeFileSync('/a/b/d', null);
     let s = fs.toString();
-    expect(s.length).to.equal(52);
+    expect(s.length).to.equal(72);
     // console.log(s);
     let nfs = new XFileSystem();
     nfs.parse(JSON.parse(s));
-    expect(nfs.readFileSync('/a/b/c','utf8') == '123中文');
+    expect(nfs.readFileSync('/a/b/c', 'utf8') == '123中文');
+    expect(() => nfs.readFileSync('/a/b/d')).to.throw('no such file or directory');
   });
   
   it('should have all fs methods', () => {

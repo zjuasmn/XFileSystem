@@ -116,7 +116,10 @@ export default class XFileSystem {
       try {
         result = fs[fn + 'Sync'](abspath, ...args);
       } catch (e) {
-        // TODO: only handle not found error
+        if (e.code != errors.code.ENOENT.code){
+          setImmediate(() => callback(e));
+          return;
+        }
         if (!inLib(abspath)) {
           setImmediate(() => callback(e));
           return;
@@ -417,10 +420,11 @@ export default class XFileSystem {
     for (let path in this._stats) {
       if (isReservePath(path)) continue;
       let stat = this._stats[path];
+      let content = this._meta(path);
       if (stat.mode == FILEMODE) {
-        obj[path] = {f: this.readFileSync(path, 'utf8')};
+        obj[path] = {f: content && content.toString()};
       } else {
-        obj[path] = {d: this._meta(path)[""] ? 1 : 0};
+        obj[path] = {d: content[''] ? 1 : 0};
       }
     }
     return JSON.stringify(obj);
