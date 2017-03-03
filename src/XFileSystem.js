@@ -42,8 +42,21 @@ function isReservePath(abspath) {
 function NotImplemented() {
   throw new XFileSystemError(errors.code.ENOSYS);
 }
+
 export function inLib(path) {
   return normalize(path).indexOf(node_modules) == 1;
+}
+
+export function needToFetchRemote(e, abspath) {
+  if (e.code != errors.code.ENOENT.code) {
+    return false;
+  } else if (!inLib(abspath)) {
+    return false;
+  } else if (/\/package\.json$/.test(abspath) && pathToArray(abspath).length > 3) {
+    return false
+  } else {
+    return true;
+  }
 }
 const libPrefixLength = node_modules.length + 1;
 
@@ -61,7 +74,7 @@ export default class XFileSystem {
     this.mkdirSync(node_modules);
     this.data.node_modules[''] = null;
   }
-
+  
   _meta(abspath) {
     const path = pathToArray(abspath);
     let current = this.data;
@@ -116,11 +129,7 @@ export default class XFileSystem {
       try {
         result = fs[fn + 'Sync'](abspath, ...args);
       } catch (e) {
-        if (e.code != errors.code.ENOENT.code){
-          setImmediate(() => callback(e));
-          return;
-        }
-        if (!inLib(abspath)) {
+        if (!needToFetchRemote(e, abspath)) {
           setImmediate(() => callback(e));
           return;
         }

@@ -106,7 +106,7 @@ describe('XFileSystem', () => {
       // })
     });
   });
-  it('readFile should only fetch remote when error is notfound', () => {
+  it('readFile should only fetch remote when error is notfound', (done) => {
     fs.readFile('/node_modules/jquery/src/jquery.js', (err, res) => {
       expect(err).to.equal(null);
       expect(res.toString()).to.contains('jQuery');
@@ -117,9 +117,20 @@ describe('XFileSystem', () => {
       fs.readFile('/node_modules/jquery/src/jquery.js/package.json', (err, res) => {
         // fs.readFile('/node_modules/jquery/src', (err, res) => {
         //   expect(err.message).to.equal('illegal operation on a directory');
-        expect(err.message).to.equal('??');
+        expect(err.message).to.equal('no such file or directory');
         done();
       })
+    });
+  });
+  it('readFile should only fetch remote when unreasonable package.json appear', (done) => {
+    fs._fetch = () => {
+      throw new Error('should not be called')
+    };
+    fs.readFile('/node_modules/jquery/src/jquery.js/package.json', (err, res) => {
+      // fs.readFile('/node_modules/jquery/src', (err, res) => {
+      //   expect(err.message).to.equal('illegal operation on a directory');
+      expect(err.message).to.equal('no such file or directory');
+      done();
     });
   });
   it('readFile should fail on top node_model level', (done) => {
@@ -201,7 +212,7 @@ describe('XFileSystem', () => {
       expect(err).to.equal(null);
       expect(stats.isDirectory()).to.equal(true);
       
-      fs.stat('/node_modules/react/dist/package.json', (err, stats) => {
+      fs.stat('/node_modules/react/dist/lalala.json', (err, stats) => {
         expect(err.message).to.equal('no such file or directory');
         expect('react.min.js' in fs.data.node_modules.react.dist).to.equal(true);
         done();
