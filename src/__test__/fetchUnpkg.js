@@ -1,10 +1,11 @@
-import fetchUnpkg from '../fetchUnpkg'
+import fetchUnpkg,{getModuleName,hostname,version} from '../fetchUnpkg'
 import {expect} from 'chai'
 
 describe('fetchUnpkg', () => {
   it('can return file', (done) => {
     fetchUnpkg('/jquery/src/jquery.js').then(text => {
       expect(text).to.contains('jQuery');
+      expect(Number(version['jquery'][0])).to.greaterThan(2);
       done();
     })
   });
@@ -25,5 +26,14 @@ describe('fetchUnpkg', () => {
       expect(err.message).to.contains('NOT FOUND');
       done();
     })
+  })
+});
+
+describe('getModuleName',()=>{
+  it('works',()=>{
+    expect(getModuleName(`${hostname}/abc`)).to.equal('abc');
+    expect(getModuleName(`${hostname}/abc@123`)).to.equal('abc@123');
+    expect(getModuleName(`${hostname}/abc@123/dsdsd`)).to.equal('abc@123');
+    
   })
 });
