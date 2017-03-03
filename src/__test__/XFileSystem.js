@@ -169,12 +169,23 @@ describe('XFileSystem', () => {
     expect(() => fs.constants).to.throw('function not implemented')
   });
   
-  it('stats should work', () => {
+  it('statSync should work', () => {
     expect(fs.statSync('/').isDirectory()).to.equal(true);
     expect(fs.statSync('/').mode).to.equal(16877);
     expect(() => fs.statSync('/a')).to.throw('no such file or directory');
     fs.writeFileSync('/a', '123');
     expect(fs.statSync('/a').isFile()).to.equal(true);
+  });
+  
+  it('stat should work', (done) => {
+    fs.stat('/node_modules/react', (err, stats) => {
+      expect(err).to.equal(null);
+      expect(stats.isDirectory()).to.equal(true);
+      fs.stat('/node_modules/react/index/package.json', (err, stats) => {
+        expect(err.message).to.equal('no such file or directory');
+        done();
+      });
+    })
   });
   it('should have all fs methods', () => {
     let fsMethods = [

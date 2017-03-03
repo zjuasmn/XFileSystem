@@ -99,7 +99,8 @@ export default class XFileSystem {
       setImmediate(() => callback(null, result));
     }
   };
-  _remote = (fn, shouldBeDir) => {
+  
+  _remote = (fn, _shouldBeDir) => {
     let fs = this;
     return function () {
       let path = arguments[0];
@@ -117,17 +118,27 @@ export default class XFileSystem {
       try {
         result = fs[fn + 'Sync'](abspath, ...args);
       } catch (e) {
-        
         if (!inLib(abspath)) {
           setImmediate(() => callback(e));
           return;
         }
+        let shouldBeDir = _shouldBeDir;
+        let fetchPath = abspath.substr(libPrefixLength); // /node_modules/XX/YY => /XX/YY
         
-        if (abspath.substr(libPrefixLength + 1).indexOf('/') < 0 && shouldBeDir == false) {
-          setImmediate(() => callback(new XFileSystemError(errors.code.EISDIR, abspath)));
-          return;
+        if (shouldBeDir === false) {
+          if (fetchPath.substr(1).indexOf('/') < 0) { // top level module, like `/jquery`
+            setImmediate(() => callback(new XFileSystemError(errors.code.EISDIR, abspath)));
+            return;
+          }
+        } else if (shouldBeDir === undefined) {
+          shouldBeDir = true;
+          if (fetchPath.substr(1).indexOf('/') >= 0) { // top level module, like `/jquery`
+            // in module, like `/jquery/dist/sub`,
+            fetchPath = dirname(fetchPath); //fetch upperlevel, like `/jquery/dist
+          }
         }
-        fs._fetch(abspath.substr(libPrefixLength), shouldBeDir)
+        
+        fs._fetch(fetchPath, shouldBeDir)
           .then((textOrArray) => {
             if (shouldBeDir) {
               let dir = fs.mkdirpSync(abspath);
@@ -248,7 +259,7 @@ export default class XFileSystem {
   lchownSync = NotImplemented;
   link = this._syncToCb('link');
   linkSync = NotImplemented;
-  lstat = this._syncToCb('lstat');
+  lstat = this._remote('lstat');
   
   lstatSync(_path) {
     let abspath = normalize(_path);
@@ -356,7 +367,7 @@ export default class XFileSystem {
   renameSync = NotImplemented;
   rmdir = this._syncToCb('rmdir');
   rmdirSync = (path) => this._remove(path, isDir);
-  stat = this._syncToCb('stat');
+  stat = this._remote('stat');
   statSync = this.lstatSync;
   symlink = this._syncToCb('symlink');
   symlinkSync = NotImplemented;
