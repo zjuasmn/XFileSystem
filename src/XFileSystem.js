@@ -124,6 +124,7 @@ export default class XFileSystem {
         }
         let shouldBeDir = _shouldBeDir;
         let fetchPath = abspath.substr(libPrefixLength); // /node_modules/XX/YY => /XX/YY
+        let dirpath = abspath;
         
         if (shouldBeDir === false) {
           if (fetchPath.substr(1).indexOf('/') < 0) { // top level module, like `/jquery`
@@ -135,26 +136,27 @@ export default class XFileSystem {
           if (fetchPath.substr(1).indexOf('/') >= 0) { // top level module, like `/jquery`
             // in module, like `/jquery/dist/sub`,
             fetchPath = dirname(fetchPath); //fetch upperlevel, like `/jquery/dist
+            dirpath = dirname(abspath);
           }
         }
         
         fs._fetch(fetchPath, shouldBeDir)
           .then((textOrArray) => {
             if (shouldBeDir) {
-              let dir = fs.mkdirpSync(abspath);
+              let dir = fs.mkdirpSync(dirpath);
               dir[''] = true;
               for (let sub of textOrArray) {
                 if (sub[sub.length - 1] == '/') { // dir
                   sub = sub.substr(0, sub.length - 1);
                   if (dir[sub]) {
                     if (!isDir(dir[sub])) {
-                      return callback(new XFileSystemError(errors.code.EEXIST, abspath + '/' + sub))
+                      return callback(new XFileSystemError(errors.code.EEXIST, dirpath + '/' + sub))
                     }
                   } else {
-                    this._write(dir, abspath + '/' + sub, {'': null});
+                    this._write(dir, dirpath + '/' + sub, {'': null});
                   }
                 } else { // remote file
-                  this._write(dir, abspath + '/' + sub, null);
+                  this._write(dir, dirpath + '/' + sub, null);
                 }
               }
             } else {

@@ -181,8 +181,10 @@ describe('XFileSystem', () => {
     fs.stat('/node_modules/react', (err, stats) => {
       expect(err).to.equal(null);
       expect(stats.isDirectory()).to.equal(true);
-      fs.stat('/node_modules/react/index/package.json', (err, stats) => {
+      
+      fs.stat('/node_modules/react/dist/package.json', (err, stats) => {
         expect(err.message).to.equal('no such file or directory');
+        expect('react.min.js' in fs.data.node_modules.react.dist).to.equal(true);
         done();
       });
     })
