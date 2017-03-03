@@ -273,16 +273,16 @@ export default class XFileSystem {
     if (!stats) {
       throw new XFileSystemError(errors.code.ENOENT, abspath);
     }
-    let time = stats.time;
+    let _time = stats._time;
     return {
       isBlockDevice: falseFn,
       isCharacterDevice: falseFn,
       isSymbolicLink: falseFn,
       isFIFO: falseFn,
       isSocket: falseFn,
-      atime: time,
-      mtime: time,
-      ctime: time,
+      atime: _time,
+      mtime: _time,
+      ctime: _time,
       isDirectory: stats.mode == DIRMODE ? trueFn : falseFn,
       isFile: stats.mode == FILEMODE ? trueFn : falseFn,
       ...stats,
