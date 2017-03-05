@@ -1,8 +1,8 @@
 import {basename, dirname, normalize as _normalize, resolve} from "path";
 import FSWatcher from "./FSWatcher";
-import {FILE, FILEMODE, DIRECTORY, DIRMODE, pathToArray, isDir, isFile} from "./utils";
+import {FILE, FILEMODE, DIRECTORY, DIRMODE, pathToArray, isDir, isFile, isReservedPath, node_modules} from "./utils";
 const errors = require("errno");
-const node_modules = 'node_modules';
+
 let normalize = (_path) => resolve('/', _normalize(_path));
 
 class XFileSystemError extends Error {
@@ -16,16 +16,9 @@ class XFileSystemError extends Error {
   }
 }
 
-function exists(item) {
-  return item != undefined;
-}
-
 const trueFn = () => true;
 const falseFn = () => false;
 
-function isReservePath(abspath) {
-  return abspath == '/' || abspath == `/${node_modules}`;
-}
 function NotImplemented() {
   throw new XFileSystemError(errors.code.ENOSYS);
 }
@@ -211,8 +204,8 @@ export default class XFileSystem {
   
   _remove(_path, testFn) {
     let abspath = normalize(_path);
-    
-    if (isReservePath(abspath)) {
+  
+    if (isReservedPath(abspath)) {
       throw new XFileSystemError(errors.code.EPERM, abspath);
     }
     let dirpath = dirname(abspath);
@@ -245,7 +238,7 @@ export default class XFileSystem {
   createReadStream = NotImplemented;
   createWriteStream = NotImplemented;
   exists = NotImplemented;
-  existsSync = (p) => exists(this._meta(p));
+  existsSync = (p) => Boolean(this._meta(normalize(p)));
   fchmod = this._syncToCb('fchmod');
   fchmodSync = NotImplemented;
   fchown = this._syncToCb('fchown');
@@ -376,17 +369,17 @@ export default class XFileSystem {
   renameSync(oldPath, newPath) {
     let absOldPath = normalize(oldPath);
     let absNewPath = normalize(newPath);
-    if (isReservePath(absOldPath)) {
+    if (isReservedPath(absOldPath)) {
       throw new XFileSystemError(errors.code.EPERM, absOldPath);
     }
-    if (isReservePath(absNewPath)) {
+    if (isReservedPath(absNewPath)) {
       throw new XFileSystemError(errors.code.EPERM, absNewPath);
     }
     let dir = this._meta(dirname(absNewPath));
     if (!dir) {
       throw new XFileSystemError(errors.code.ENOENT, absNewPath);
     }
-    let content = this._remove(absOldPath, () => true);
+    let content = this._remove(absOldPath, trueFn);
     this._write(dir, absNewPath, isFile(content) ? content.buffer : content, content[''].type);
   }
   
@@ -466,7 +459,7 @@ export default class XFileSystem {
     if (o == null || typeof o == 'string') {
       this.writeFileSync(abspath, o && new Buffer(o));
     } else {
-      if (!isReservePath(abspath)) {
+      if (!isReservedPath(abspath)) {
         this.mkdirSync(abspath);
       }
       for (let filename in o) {
