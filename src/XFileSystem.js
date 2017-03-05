@@ -1,5 +1,6 @@
 import {basename, dirname, normalize as _normalize, resolve} from "path";
 import FSWatcher from "./FSWatcher";
+import {FILE, FILEMODE, DIRECTORY, DIRMODE, pathToArray, isDir, isFile} from "./utils";
 const errors = require("errno");
 const node_modules = 'node_modules';
 let normalize = (_path) => resolve('/', _normalize(_path));
@@ -14,23 +15,9 @@ class XFileSystemError extends Error {
     this.path = path;
   }
 }
-// directory is an object with '' prop, {'':true}(normal dir) {'':null}(remote dir)
-function isDir(item) {
-  return item && typeof item == "object" && ('' in item);
-}
-
-// File is Buffer or null(from remote)
-function isFile(item) {
-  return item instanceof Buffer
-}
 
 function exists(item) {
   return item != undefined;
-}
-function pathToArray(abspath) {
-  let path = normalize(abspath).substr(1).split("/");
-  if (path.length > 0 && !path[path.length - 1]) path.pop();
-  return path;
 }
 
 const trueFn = () => true;
@@ -60,19 +47,14 @@ export function needToFetchRemote(e, abspath) {
 }
 const libPrefixLength = node_modules.length + 1;
 
-const DIRMODE = 16877;// Oct 40755
-const FILEMODE = 33188;// Oct 100644
-
 export default class XFileSystem {
-  data = {'': true};
-  _stats = {'/': {birthtime: new Date(), mode: DIRMODE, _time: new Date()}};
+  data = {'': {birthtime: new Date(), type: DIRECTORY, _time: new Date()}};
   _watcher = {};
   _fetch;
   
   constructor(fetch) {
     this._fetch = fetch;
     this.mkdirSync(node_modules);
-    this.data.node_modules[''] = null;
   }
   
   _meta(abspath) {
@@ -155,7 +137,6 @@ export default class XFileSystem {
           .then((textOrArray) => {
             if (shouldBeDir) {
               let dir = fs.mkdirpSync(dirpath);
-              dir[''] = true;
               for (let sub of textOrArray) {
                 if (sub[sub.length - 1] == '/') { // dir
                   sub = sub.substr(0, sub.length - 1);
@@ -164,10 +145,10 @@ export default class XFileSystem {
                       return callback(new XFileSystemError(errors.code.EEXIST, dirpath + '/' + sub))
                     }
                   } else {
-                    this._write(dir, dirpath + '/' + sub, {'': null});
+                    this._write(dir, dirpath + '/' + sub, {}, DIRECTORY);
                   }
                 } else { // remote file
-                  this._write(dir, dirpath + '/' + sub, null);
+                  this._write(dir, dirpath + '/' + sub, null, FILE);
                 }
               }
             } else {
@@ -193,20 +174,39 @@ export default class XFileSystem {
     this._watcher[abspath] && this._watcher[abspath].emit('watch', type, filename);
   }
   
-  _write(current, abspath, content) {
+  /**
+   *
+   * @param current parent content
+   * @param abspath target abspath
+   * @param content content to be written
+   * @param type FILE or DIRECTORY
+   * @returns {*} written content
+   * @private
+   */
+  _write(current, abspath, content, type) {
     let dirpath = dirname(abspath);
     let filename = basename(abspath);
-    current[filename] = content;
-    
     let createNew = false;
-    if (!this._stats[abspath]) {
-      createNew = true;
-      this._stats[abspath] = {birthtime: new Date(), mode: isDir(content) ? DIRMODE : FILEMODE};
-    }
-    this._stats[abspath]._time = new Date();
     
+    if (type == DIRECTORY) {
+      current[filename] = content;
+    } else if (type == FILE) {
+      if (current[filename]) {
+        current[filename].buffer = content;
+      } else {
+        current[filename] = {buffer: content};
+      }
+    } else {
+      throw new XFileSystemError(errors.code.UNKNOWN);
+    }
+    let ret = current[filename];
+    if (!ret['']) {
+      createNew = true;
+      ret[''] = {birthtime: new Date(), type};
+    }
+    ret['']._time = new Date();
     this._emit(abspath, dirpath, filename, createNew ? 'rename' : 'change');
-    return content;
+    return ret;
   }
   
   _remove(_path, testFn) {
@@ -221,9 +221,10 @@ export default class XFileSystem {
     if (!isDir(dir) || !(filename in dir) || !testFn(dir[filename])) {
       throw new XFileSystemError(errors.code.ENOENT, abspath);
     }
+    let ret = dir[filename];
     delete dir[filename];
-    delete this._stats[abspath];
     this._emit(abspath, dirpath, filename, 'rename');
+    return ret;
   }
   
   access = this._syncToCb('access');
@@ -269,11 +270,12 @@ export default class XFileSystem {
   
   lstatSync(path) {
     const abspath = normalize(path);
-    const stats = this._stats[abspath];
-    if (!stats) {
+    let current = this._meta(abspath);
+    if (!current) {
       throw new XFileSystemError(errors.code.ENOENT, abspath);
     }
-    let _time = stats._time;
+    let stat = current[''];
+    let _time = stat._time;
     return {
       isBlockDevice: falseFn,
       isCharacterDevice: falseFn,
@@ -283,9 +285,10 @@ export default class XFileSystem {
       atime: _time,
       mtime: _time,
       ctime: _time,
-      isDirectory: stats.mode == DIRMODE ? trueFn : falseFn,
-      isFile: stats.mode == FILEMODE ? trueFn : falseFn,
-      ...stats,
+      mode: stat.type == FILE ? FILEMODE : DIRMODE,
+      isDirectory: stat.type == DIRECTORY ? trueFn : falseFn,
+      isFile: stat.type == FILE ? trueFn : falseFn,
+      birthtime: stat.birthtime,
     }
   };
   
@@ -309,9 +312,7 @@ export default class XFileSystem {
     } else if (isFile(current[path[i]])) {
       throw new XFileSystemError(errors.code.ENOTDIR, abspath);
     }
-    let local = path[0] != node_modules ? true : null;
-    
-    this._write(current, abspath, {'': local});
+    this._write(current, abspath, {}, DIRECTORY);
   }
   
   mkdirp = this._syncToCb('mkdirp');
@@ -321,7 +322,6 @@ export default class XFileSystem {
     const path = pathToArray(abspath);
     let current = this.data;
     let currentPath = '/';
-    let local = path[0] != node_modules ? true : null;
     for (let token of path) {
       if (currentPath != '/') {
         currentPath += '/';
@@ -332,7 +332,7 @@ export default class XFileSystem {
       } else if (isDir(current[token])) {
         current = current[token];
       } else {
-        current = this._write(current, currentPath, {'': local});
+        current = this._write(current, currentPath, {}, DIRECTORY);
       }
     }
     return current;
@@ -360,10 +360,10 @@ export default class XFileSystem {
     let encoding = typeof options == 'object' ? options.encoding : options;
     const abspath = normalize(_path);
     let current = this._meta(abspath);
-    if (!isFile(current)) {
+    if (!isFile(current) || !current.buffer) {
       throw new XFileSystemError(errors.code[isDir(current) ? 'EISDIR' : 'ENOENT'], abspath);
     }
-    return encoding ? current.toString(encoding) : current;
+    return encoding ? current.buffer.toString(encoding) : current.buffer;
   }
   
   readlink = this._syncToCb('readlink');
@@ -372,7 +372,24 @@ export default class XFileSystem {
   realpath = this._syncToCb('realpath');
   realpathSync = normalize;
   rename = this._syncToCb('rename');
-  renameSync = NotImplemented;
+  
+  renameSync(oldPath, newPath) {
+    let absOldPath = normalize(oldPath);
+    let absNewPath = normalize(newPath);
+    if (isReservePath(absOldPath)) {
+      throw new XFileSystemError(errors.code.EPERM, absOldPath);
+    }
+    if (isReservePath(absNewPath)) {
+      throw new XFileSystemError(errors.code.EPERM, absNewPath);
+    }
+    let dir = this._meta(dirname(absNewPath));
+    if (!dir) {
+      throw new XFileSystemError(errors.code.ENOENT, absNewPath);
+    }
+    let content = this._remove(absOldPath, () => true);
+    this._write(dir, absNewPath, isFile(content) ? content.buffer : content, content[''].type);
+  }
+  
   rmdir = this._syncToCb('rmdir');
   rmdirSync = (path) => this._remove(path, isDir);
   stat = this._remote('stat');
@@ -419,35 +436,47 @@ export default class XFileSystem {
     if (!filename || isDir(current[filename])) {
       throw new XFileSystemError(errors.code.EISDIR, abspath);
     }
-    this._write(current, abspath, encoding || typeof content === "string" ? new Buffer(content, encoding) : content)
+    this._write(current, abspath, encoding || typeof content === "string" ? new Buffer(content, encoding) : content, FILE)
   }
   
   writeSync = NotImplemented;
   
+  _toPlainObject(current) {
+    if (isFile(current)) {
+      return current.buffer && current.buffer.toString();
+    } else if (isDir(current)) {
+      let o = {};
+      for (let filename in current) {
+        if (filename) {
+          o[filename] = this._toPlainObject(current[filename]);
+        }
+      }
+      return o;
+    } else {
+      throw new XFileSystemError(errors.code.UNKNOWN);
+    }
+    
+  }
+  
   toString() {
-    let obj = {};
-    for (let path in this._stats) {
-      if (isReservePath(path)) continue;
-      let stat = this._stats[path];
-      let content = this._meta(path);
-      if (stat.mode == FILEMODE) {
-        obj[path] = {f: content && content.toString()};
-      } else {
-        obj[path] = {d: content[''] ? 1 : 0};
+    return JSON.stringify(this._toPlainObject(this.data));
+  }
+  
+  _build(abspath, o) {
+    if (o == null || typeof o == 'string') {
+      this.writeFileSync(abspath, o && new Buffer(o));
+    } else {
+      if (!isReservePath(abspath)) {
+        this.mkdirSync(abspath);
+      }
+      for (let filename in o) {
+        this._build(resolve(abspath, filename), o[filename]);
       }
     }
-    return JSON.stringify(obj);
   }
   
   parse(o) {
-    for (let path in o) {
-      let x = o[path];
-      if ('f' in x) {
-        this.writeFileSync(path, x.f);
-      } else if ('d' in x) {
-        this.mkdirpSync(path)[""] = x.d ? true : null;
-      }
-    }
+    this._build('/', o);
   }
 }
 

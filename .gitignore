@@ -40,3 +40,4 @@ umd/
 .idea/
 !webpack.config.js
 stats/
+playground/

@@ -1,7 +1,8 @@
-import XFileSystem from '../XFileSystem'
-import {expect} from 'chai'
-import fetchUnpkg from '../fetchUnpkg'
-import sinon from 'sinon'
+import XFileSystem from "../XFileSystem";
+import {expect} from "chai";
+import fetchUnpkg from "../fetchUnpkg";
+import sinon from "sinon";
+import {isDir} from "../utils";
 
 describe('XFileSystem', () => {
   let fs;
@@ -11,21 +12,21 @@ describe('XFileSystem', () => {
   it('writeFileSync should works', () => {
     // normal write
     fs.writeFileSync('/a.js', '123');
-    expect(fs.data['a.js'].toString()).to.equal('123');
+    expect(fs.data['a.js'].buffer.toString()).to.equal('123');
     fs.writeFileSync('/a.js', '456');
-    expect(fs.data['a.js'].toString()).to.equal('456');
+    expect(fs.data['a.js'].buffer.toString()).to.equal('456');
     fs.writeFileSync('/b.js', '123', {encoding: 'utf8'});
     fs.writeFileSync('/c.js', new Buffer('123'));
     
     // write will build path
     fs.writeFileSync('/sub/a.js', '456');
-    expect(fs.data.sub[""]).to.equal(true);
-    expect(fs.data.sub['a.js'].toString()).to.equal('456');
+    expect(Boolean(fs.data.sub[""])).to.equal(true);
+    expect(fs.data.sub['a.js'].buffer.toString()).to.equal('456');
     
     // path in node_modules would be {"":null}
     fs.writeFileSync('/node_modules/a/b/a.js', '456');
-    expect(fs.data.node_modules.a['']).to.equal(null);
-    expect(fs.data.node_modules.a.b['']).to.equal(null);
+    // expect(fs.data.node_modules.a['']).to.equal(null);
+    // expect(fs.data.node_modules.a.b['']).to.equal(null);
     
     // cannot write to dir
     expect(() => fs.writeFileSync('/sub', '456')).to.throw('illegal operation on a directory');
@@ -36,11 +37,11 @@ describe('XFileSystem', () => {
   it('writeFile should work', (done) => {
     fs.writeFile('/a.js', '123', (err) => {
       expect(err).to.equal(null);
-      expect(fs.data['a.js'].toString()).to.equal('123');
+      expect(fs.data['a.js'].buffer.toString()).to.equal('123');
     });
     
     fs.writeFile('/a.js', '456');
-    expect(fs.data['a.js'].toString()).to.equal('456');
+    expect(fs.data['a.js'].buffer.toString()).to.equal('456');
     
     fs.writeFile('/a.js/b', '123', (err) => {
       expect(err.message).to.equal('file already exists');
@@ -51,31 +52,28 @@ describe('XFileSystem', () => {
   
   it('mkdirSync should work', () => {
     fs.mkdirSync('/sub');
-    expect(fs.data['sub']).to.deep.equal({"": true});
+    expect(isDir(fs.data['sub'])).to.equal(true);
     expect(() => fs.mkdirSync('/')).to.throw('file already exists');
     expect(() => fs.mkdirSync('/sub')).to.throw('file already exists');
     expect(() => fs.mkdirSync('/a/sub')).to.throw('no such file or directory');
     
     // dir in node_modules should marked as remote.
     fs.mkdirSync('/node_modules/sub');
-    expect(fs.data.node_modules['sub']).to.deep.equal({"": null});
+    // expect(fs.data.node_modules['sub']).to.deep.equal({"": null});
   });
   
   it('mkdir should work', (done) => {
     fs.mkdir('/sub', (err) => {
       expect(err).to.equal(null);
-      expect(fs.data['sub']).to.deep.equal({"": true});
+      expect(Boolean(fs.data['sub'][''])).to.equal(true);
       done();
     })
   });
   
   it('mkdirpSync should work', () => {
     let dir = fs.mkdirpSync('/a/b/c');
-    expect(dir).to.deep.equal({"": true});
+    expect(isDir(dir)).to.equal(true);
     expect(fs.data.a.b.c).to.equal(dir);
-    expect('/a' in fs._stats).to.equal(true);
-    expect('/a/b' in fs._stats).to.equal(true);
-    expect('/a/b/c' in fs._stats).to.equal(true);
     expect(fs.mkdirpSync('/a/b/c')).to.equal(dir);
     fs.writeFileSync('/sub', '123');
     expect(() => fs.mkdirpSync('/sub/a')).to.throw('not a directory');
@@ -84,7 +82,7 @@ describe('XFileSystem', () => {
   it('readFilsSync should work', () => {
     fs.writeFileSync('/a.js', '123');
     fs.writeFileSync('/sub/a.js', '456');
-    expect(fs.readFileSync('a.js').toString()).to.equal('123');
+    expect(fs.readFileSync('a.js')).to.deep.equal(new Buffer('123'));
     expect(fs.readFileSync('a.js', 'utf-8')).to.equal('123');
     expect(fs.readFileSync('/sub/a.js', 'utf-8')).to.equal('456');
     
@@ -220,15 +218,32 @@ describe('XFileSystem', () => {
     })
   });
   
+  it('renameSync should work', () => {
+    fs.writeFileSync('/a.js', '123');
+    fs.writeFileSync('/b.js', '456');
+    fs.renameSync('/a.js', '/c.js');
+    expect(fs.data['c.js'].buffer).to.deep.equal(new Buffer('123'));
+    expect(() => fs.renameSync('/a.js', '/c.js')).to.throw('no such file or directory');
+    expect(() => fs.renameSync('/c.js', '/a/c.js')).to.throw('no such file or directory');
+    fs.mkdirSync('/a');
+    fs.renameSync('/c.js', '/a/c.js');
+    expect(fs.data.a['c.js'].buffer).to.deep.equal(new Buffer('123'));
+    // rename directory
+    fs.renameSync('/a', '/b');
+    expect(fs.data.b['c.js'].buffer).to.deep.equal(new Buffer('123'));
+    
+    expect(() => fs.renameSync('/', '/a.js')).to.throw('operation not permitted');
+  });
+  
   it('toString and parse should work', () => {
     fs.writeFileSync('/a/b/c', '123中文');
     fs.writeFileSync('/a/b/d', null);
     let s = fs.toString();
-    expect(s.length).to.equal(72);
+    expect(s.length).to.equal(52);
     // console.log(s);
     let nfs = new XFileSystem();
     nfs.parse(JSON.parse(s));
-    expect(nfs.readFileSync('/a/b/c', 'utf8') == '123中文');
+    expect(nfs.readFileSync('/a/b/c', 'utf8')).to.equal('123中文');
     expect(() => nfs.readFileSync('/a/b/d')).to.throw('no such file or directory');
   });
   

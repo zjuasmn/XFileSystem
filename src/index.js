@@ -7,3 +7,4 @@ export default fs;
 
 exports.XFileSystem = XFileSystem;
 exports.fetchUnpkg = fetchUnpkg;
+export * as utils from './utils'
