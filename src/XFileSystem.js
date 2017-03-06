@@ -10,7 +10,8 @@ import {
   isFile,
   isReservedPath,
   node_modules,
-  parseArguments
+  parseArguments,
+  metaToAbspath
 } from "./utils";
 const errors = require("errno");
 
@@ -52,7 +53,7 @@ export function needToFetchRemote(e, abspath) {
 const libPrefixLength = node_modules.length + 1;
 
 export default class XFileSystem {
-  data = {'': {birthtime: new Date(), type: DIRECTORY, _time: new Date()}};
+  data = {'': {birthtime: new Date(), type: DIRECTORY, _time: new Date(), _dir: null, _name: '/'}};
   _watcher = {};
   _fetch;
   
@@ -71,6 +72,8 @@ export default class XFileSystem {
     }
     return current;
   }
+  
+  _abspath = metaToAbspath;
   
   _syncToCb = (fn) => {
     let fs = this;
@@ -176,10 +179,14 @@ export default class XFileSystem {
     if (type == DIRECTORY) {
       current[filename] = content;
     } else if (type == FILE) {
-      if (current[filename]) {
-        current[filename].buffer = content;
+      if (content == null || content instanceof Buffer) {
+        if (current[filename]) {
+          current[filename].buffer = content;
+        } else {
+          current[filename] = {buffer: content};
+        }
       } else {
-        current[filename] = {buffer: content};
+        current[filename] = content;
       }
     } else {
       throw new XFileSystemError(errors.code.UNKNOWN);
@@ -190,6 +197,8 @@ export default class XFileSystem {
       ret[''] = {birthtime: new Date(), type};
     }
     ret['']._time = new Date();
+    ret['']._name = filename;
+    ret['']._dir = current;
     this._emit(abspath, dirpath, filename, createNew ? 'rename' : 'change');
     return ret;
   }
@@ -207,6 +216,7 @@ export default class XFileSystem {
       throw new XFileSystemError(errors.code.ENOENT, abspath);
     }
     let ret = dir[filename];
+    ret['']._dir = null;
     delete dir[filename];
     this._emit(abspath, dirpath, filename, 'rename');
     return ret;
@@ -374,7 +384,7 @@ export default class XFileSystem {
       throw new XFileSystemError(errors.code.ENOENT, absNewPath);
     }
     let content = this._remove(absOldPath, trueFn);
-    this._write(dir, absNewPath, isFile(content) ? content.buffer : content, content[''].type);
+    this._write(dir, absNewPath, content, content[''].type);
   }
   
   rmdir = this._syncToCb('rmdir');

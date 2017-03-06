@@ -33,3 +33,15 @@ export function parseArguments(_arguments) {
   }
   return {path, args, callback};
 }
+export function metaToAbspath(meta) {
+  if (!meta) {
+    return null;
+  }
+  let abspath = meta['']._name;
+  while (meta['']._dir) {
+    meta = meta['']._dir;
+    abspath = meta['']._name + '/' + abspath;
+  }
+  return abspath[0] == '/' ? abspath.substr(1) : abspath;
+}
+

@@ -265,6 +265,21 @@ describe('XFileSystem', () => {
     });
   });
   
+  it('_meta and _abspath should work', () => {
+    fs.writeFileSync('/a/b/c', '123');
+    let meta = fs._meta('/a/b/c');
+    expect(meta.buffer).to.deep.equal(new Buffer('123'));
+    let abspath = fs._abspath(meta);
+    expect(abspath).to.equal('/a/b/c');
+    fs.renameSync('/a/b/c', '/x');
+    let meta2 = fs._meta('/x');
+    expect(meta2).to.equal(meta);
+    expect(fs._abspath(meta2)).to.equal('/x');
+    
+    let x = fs.unlinkSync('/x');
+    expect(fs._abspath(x)).to.equal('x');
+  });
+  
   it('should have all fs methods', () => {
     let fsMethods = [
       "access",
