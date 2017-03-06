@@ -247,6 +247,24 @@ describe('XFileSystem', () => {
     expect(() => nfs.readFileSync('/a/b/d')).to.throw('no such file or directory');
   });
   
+  it('promise should be returned when no callback', () => {
+    return fs.writeFile('/a/b/c', '123中文')
+      .then(() => fs.readFile('/a/b/c', 'utf8'))
+      .then((data) => {
+        expect(data).to.equal('123中文');
+      })
+      .then(() => fs.stat('/a/c'))
+      .catch(e => expect(e.message).to.equal('no such file or directory'))
+  });
+  
+  it('readdirp should work', () => {
+    fs.writeFileSync('/a/b/c', '123');
+    expect(fs.readdirpSync('/')).to.deep.equal({
+      a: {b: {c: null}},
+      node_modules: {}
+    });
+  });
+  
   it('should have all fs methods', () => {
     let fsMethods = [
       "access",

@@ -20,3 +20,16 @@ export function pathToArray(abspath) {
 export function isReservedPath(abspath) {
   return abspath == '/' || abspath == `/${node_modules}`;
 }
+export function parseArguments(_arguments) {
+  let path = _arguments[0];
+  let args = Array.prototype.slice.call(_arguments, 1, _arguments.length - 1);
+  let _callback = _arguments[_arguments.length - 1];
+  let callback;
+  if (typeof _callback != 'function') {
+    args.push(_callback);
+    callback = (err, result) => err ? Promise.reject(err) : Promise.resolve(result);
+  } else {
+    callback = (err, result) => setImmediate(() => _callback(err, result))
+  }
+  return {path, args, callback};
+}
