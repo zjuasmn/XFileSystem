@@ -1,5 +1,5 @@
-import fetchUnpkg,{getModuleName,hostname,version} from '../fetchUnpkg'
-import {expect} from 'chai'
+import fetchUnpkg, {getModuleName, hostname, version} from "../fetchUnpkg";
+import {expect} from "chai";
 
 describe('fetchUnpkg', () => {
   it('can return file', (done) => {
@@ -47,6 +47,5 @@ describe('getModuleName',()=>{
     expect(getModuleName(`${hostname}/abc`)).to.equal('abc');
     expect(getModuleName(`${hostname}/abc@123`)).to.equal('abc@123');
     expect(getModuleName(`${hostname}/abc@123/dsdsd`)).to.equal('abc@123');
-    
   })
 });

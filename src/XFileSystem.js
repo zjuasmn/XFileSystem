@@ -10,8 +10,7 @@ import {
   isFile,
   isReservedPath,
   node_modules,
-  parseArguments,
-  metaToAbspath
+  parseArguments
 } from "./utils";
 const errors = require("errno");
 
@@ -54,8 +53,8 @@ const libPrefixLength = node_modules.length + 1;
 
 export default class XFileSystem {
   data = {'': {birthtime: new Date(), type: DIRECTORY, _time: new Date(), _dir: null, _name: '/'}};
+  _fetch = null;
   _watcher = {};
-  _fetch;
   
   constructor(fetch) {
     this._fetch = fetch;
@@ -73,18 +72,12 @@ export default class XFileSystem {
     return current;
   }
   
-  _abspath = metaToAbspath;
-  
-  _syncToCb = (fn) => {
-    let fs = this;
+  _syncToCb(fn) {
     return function () {
-      let {path, args, callback} = parseArguments(arguments);
-      if (typeof path != 'string') {
-        return callback(new TypeError('path must be a string'));
-      }
+      let {args, callback} = parseArguments(arguments);
       let result;
       try {
-        result = fs[fn + "Sync"](path, ...args);
+        result = this[fn + "Sync"](...args);
       } catch (e) {
         return callback(e);
       }
@@ -92,18 +85,14 @@ export default class XFileSystem {
     }
   };
   
-  _remote = (fn, _shouldBeDir) => {
-    let fs = this;
+  _remote(fn, _shouldBeDir) {
     return function () {
-      let {path, args, callback} = parseArguments(arguments);
-      if (typeof path != 'string') {
-        return callback(new TypeError('path must be a string'));
-      }
-      let abspath = normalize(path);
+      let {args, callback} = parseArguments(arguments);
       let result;
       try {
-        result = fs[fn + 'Sync'](abspath, ...args);
+        result = this[fn + 'Sync'](...args);
       } catch (e) {
+        let abspath = normalize(args[0]);
         if (!needToFetchRemote(e, abspath)) {
           return callback(e);
         }
@@ -124,10 +113,10 @@ export default class XFileSystem {
           }
         }
   
-        return fs._fetch(fetchPath, shouldBeDir)
+        return this._fetch(fetchPath, shouldBeDir)
           .then((textOrArray) => {
             if (shouldBeDir) {
-              let dir = fs.mkdirpSync(dirpath);
+              let dir = this.mkdirpSync(dirpath);
               for (let sub of textOrArray) {
                 if (sub[sub.length - 1] == '/') { // dir
                   sub = sub.substr(0, sub.length - 1);
@@ -143,10 +132,10 @@ export default class XFileSystem {
                 }
               }
             } else {
-              fs.writeFileSync(abspath, textOrArray);
+              this.writeFileSync(abspath, textOrArray);
             }
             try {
-              result = fs[fn + 'Sync'](abspath, ...args)
+              result = this[fn + 'Sync'](...args)
             } catch (e) {
               return callback(e);
             }
@@ -163,7 +152,7 @@ export default class XFileSystem {
   }
   
   /**
-   *
+   * write helper
    * @param current parent content
    * @param abspath target abspath
    * @param content content to be written
@@ -263,7 +252,7 @@ export default class XFileSystem {
   linkSync = NotImplemented;
   lstat = this._remote('lstat');
   
-  lstatSync(path) {
+  lstatSync = (path) => {
     const abspath = normalize(path);
     let current = this._meta(abspath);
     if (!current) {
@@ -289,7 +278,7 @@ export default class XFileSystem {
   
   mkdir = this._syncToCb('mkdir');
   
-  mkdirSync(_path) {
+  mkdirSync = (_path) => {
     const abspath = normalize(_path);
     const path = pathToArray(abspath);
     if (path.length === 0) {
@@ -308,11 +297,11 @@ export default class XFileSystem {
       throw new XFileSystemError(errors.code.ENOTDIR, abspath);
     }
     this._write(current, abspath, {}, DIRECTORY);
-  }
+  };
   
   mkdirp = this._syncToCb('mkdirp');
   
-  mkdirpSync(_path) {
+  mkdirpSync = (_path) => {
     const abspath = normalize(_path);
     const path = pathToArray(abspath);
     let current = this.data;
@@ -331,7 +320,7 @@ export default class XFileSystem {
       }
     }
     return current;
-  }
+  };
   
   mkdtemp = this._syncToCb('mkdtemp');
   mkdtempSync = NotImplemented;
@@ -454,9 +443,11 @@ export default class XFileSystem {
     }
   }
   
-  toString() {
+  serialize = this._syncToCb('serialize');
+  
+  serializeSync = () => {
     return JSON.stringify(this._toPlainObject(this.data));
-  }
+  };
   
   _build(abspath, o) {
     if (o == null || typeof o == 'string') {
@@ -471,8 +462,25 @@ export default class XFileSystem {
     }
   }
   
-  parse(o) {
-    this._build('/', o);
+  clear = this._syncToCb('clear');
+  
+  clearSync = () => {
+    for (let filename of this.readdirSync('/')) {
+      if (filename != node_modules) {
+        this._remove(`/${filename}`, trueFn);
+      }
+    }
+    for (let filename of this.readdirSync(node_modules)) {
+      this._remove(`/${filename}`, trueFn);
+    }
+    
+  };
+  
+  deserialize = this._syncToCb('deserialize');
+  
+  deserializeSync = (s) => {
+    this.clearSync();
+    this._build('/', JSON.parse(s));
   }
 }
 

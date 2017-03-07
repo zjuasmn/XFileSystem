@@ -21,8 +21,7 @@ export function isReservedPath(abspath) {
   return abspath == '/' || abspath == `/${node_modules}`;
 }
 export function parseArguments(_arguments) {
-  let path = _arguments[0];
-  let args = Array.prototype.slice.call(_arguments, 1, _arguments.length - 1);
+  let args = Array.prototype.slice.call(_arguments, 0, _arguments.length - 1);
   let _callback = _arguments[_arguments.length - 1];
   let callback;
   if (typeof _callback != 'function') {
@@ -31,7 +30,7 @@ export function parseArguments(_arguments) {
   } else {
     callback = (err, result) => setImmediate(() => _callback(err, result))
   }
-  return {path, args, callback};
+  return {args, callback};
 }
 export function metaToAbspath(meta) {
   if (!meta) {

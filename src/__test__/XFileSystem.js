@@ -2,7 +2,7 @@ import XFileSystem from "../XFileSystem";
 import {expect} from "chai";
 import fetchUnpkg from "../fetchUnpkg";
 import sinon from "sinon";
-import {isDir} from "../utils";
+import {isDir, metaToAbspath} from "../utils";
 
 describe('XFileSystem', () => {
   let fs;
@@ -235,16 +235,25 @@ describe('XFileSystem', () => {
     expect(() => fs.renameSync('/', '/a.js')).to.throw('operation not permitted');
   });
   
-  it('toString and parse should work', () => {
+  it('serializeSync and deserializeSync should work', () => {
     fs.writeFileSync('/a/b/c', '123中文');
     fs.writeFileSync('/a/b/d', null);
-    let s = fs.toString();
+    let s = fs.serializeSync();
     expect(s.length).to.equal(52);
     // console.log(s);
     let nfs = new XFileSystem();
-    nfs.parse(JSON.parse(s));
+    nfs.deserializeSync(s);
     expect(nfs.readFileSync('/a/b/c', 'utf8')).to.equal('123中文');
     expect(() => nfs.readFileSync('/a/b/d')).to.throw('no such file or directory');
+  });
+  
+  it('clearSync should work', () => {
+    fs.writeFileSync('/a/b/c', '123中文');
+    fs.writeFileSync('/a/b/d', null);
+    expect(() => fs.writeFileSync('/a/b/c/d', null)).to.throw('not a directory');
+    fs.clearSync();
+    expect(fs.serializeSync().length).to.equal(19);
+    expect(() => fs.writeFileSync('/a/b/c/d', null)).to.not.throw();
   });
   
   it('promise should be returned when no callback', () => {
@@ -269,15 +278,15 @@ describe('XFileSystem', () => {
     fs.writeFileSync('/a/b/c', '123');
     let meta = fs._meta('/a/b/c');
     expect(meta.buffer).to.deep.equal(new Buffer('123'));
-    let abspath = fs._abspath(meta);
+    let abspath = metaToAbspath(meta);
     expect(abspath).to.equal('/a/b/c');
     fs.renameSync('/a/b/c', '/x');
     let meta2 = fs._meta('/x');
     expect(meta2).to.equal(meta);
-    expect(fs._abspath(meta2)).to.equal('/x');
+    expect(metaToAbspath(meta2)).to.equal('/x');
     
     let x = fs.unlinkSync('/x');
-    expect(fs._abspath(x)).to.equal('x');
+    expect(metaToAbspath(x)).to.equal('x');
   });
   
   it('should have all fs methods', () => {
