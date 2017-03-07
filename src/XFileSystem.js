@@ -12,20 +12,10 @@ import {
   node_modules,
   parseArguments
 } from "./utils";
-const errors = require("errno");
+import errors from "errno";
+import XFileSystemError from "./XFileSystemError";
 
 let normalize = (_path) => resolve('/', _normalize(_path));
-
-class XFileSystemError extends Error {
-  constructor(err, path) {
-    super();
-    Error.captureStackTrace && Error.captureStackTrace(this, this.constructor);
-    this.code = err.code;
-    this.errno = err.errno;
-    this.message = err.description;
-    this.path = path;
-  }
-}
 
 const trueFn = () => true;
 const falseFn = () => false;

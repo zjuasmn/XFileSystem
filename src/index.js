@@ -1,10 +1,6 @@
-import XFileSystem from "./XFileSystem";
-import fetchUnpkg from "./fetchUnpkg";
-
-const fs = new XFileSystem(fetchUnpkg);
-module.exports = fs;
-export default fs;
-
-exports.XFileSystem = XFileSystem;
-exports.fetchUnpkg = fetchUnpkg;
-export * as utils from './utils'
+export default from './XFileSystem';
+export XFileSystem from "./XFileSystem";
+export fetchUnpkg from "./fetchUnpkg";
+export fs from './fs';
+export XFileSystemError from './XFileSystemError';
+export * as utils from './utils';
