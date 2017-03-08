@@ -3,6 +3,7 @@ import {expect} from "chai";
 import fetchUnpkg from "../fetchUnpkg";
 import sinon from "sinon";
 import {isDir, metaToAbspath} from "../utils";
+import FSWatch from "../FSWatcher";
 
 describe('XFileSystem', () => {
   let fs;
@@ -12,6 +13,7 @@ describe('XFileSystem', () => {
   it('writeFileSync should works', () => {
     // normal write
     fs.writeFileSync('/a.js', '123');
+    expect(fs.existsSync('/a.js')).to.equal(true);
     expect(fs.data['a.js'].buffer.toString()).to.equal('123');
     fs.writeFileSync('/a.js', '456');
     expect(fs.data['a.js'].buffer.toString()).to.equal('456');
@@ -52,11 +54,12 @@ describe('XFileSystem', () => {
   
   it('mkdirSync should work', () => {
     fs.mkdirSync('/sub');
+    fs.writeFileSync('/file');
     expect(isDir(fs.data['sub'])).to.equal(true);
     expect(() => fs.mkdirSync('/')).to.throw('file already exists');
     expect(() => fs.mkdirSync('/sub')).to.throw('file already exists');
     expect(() => fs.mkdirSync('/a/sub')).to.throw('no such file or directory');
-    
+    expect(() => fs.mkdirSync('/file')).to.throw('file already exists');
     // dir in node_modules should marked as remote.
     fs.mkdirSync('/node_modules/sub');
     // expect(fs.data.node_modules['sub']).to.deep.equal({"": null});
@@ -140,8 +143,9 @@ describe('XFileSystem', () => {
   
   it('readdirSync', () => {
     fs.writeFileSync('/sub/a.js', '123');
-    fs.mkdirSync('/a.js', '123');
-    expect(fs.readdirSync('/')).to.deep.equal(['node_modules', 'sub', 'a.js'])
+    fs.writeFileSync('/a.js', '123');
+    expect(fs.readdirSync('/')).to.deep.equal(['node_modules', 'sub', 'a.js']);
+    expect(() => fs.readdirSync('/a.js')).to.throw('not a directory')
   });
   
   it('readdir', (done) => {
@@ -175,6 +179,10 @@ describe('XFileSystem', () => {
     let watcher1 = fs.watch('/', dirSpy);
     let fileSpy = sinon.spy();
     let watcher2 = fs.watch('/b.js', fileSpy);
+  
+    expect(() => new FSWatch()).to.throw();
+    expect(watcher1 instanceof FSWatch).to.equal(true);
+    expect(() => watcher1.start()).to.throw('start watch more than once');
     
     fs.writeFileSync('/a.js', '123');
     expect(dirSpy.calledWith('rename', 'a.js'));
@@ -203,6 +211,7 @@ describe('XFileSystem', () => {
     expect(() => fs.statSync('/a')).to.throw('no such file or directory');
     fs.writeFileSync('/a', '123');
     expect(fs.statSync('/a').isFile()).to.equal(true);
+    expect(fs.statSync('/a').isDirectory()).to.equal(false);
   });
   
   it('stat should work', (done) => {
@@ -233,6 +242,7 @@ describe('XFileSystem', () => {
     expect(fs.data.b['c.js'].buffer).to.deep.equal(new Buffer('123'));
     
     expect(() => fs.renameSync('/', '/a.js')).to.throw('operation not permitted');
+    expect(() => fs.renameSync('/a.js', '/node_modules')).to.throw('operation not permitted');
   });
   
   it('serializeSync and deserializeSync should work', () => {

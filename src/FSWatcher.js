@@ -16,7 +16,7 @@ export default class FSWatcher extends EventEmitter {
   start = (watchFilename/*, persistent, recursive, encoding*/) => {
     let fs = this._fs;
     if (this._handle) {
-      throw new Error(`start watch more than once!`)
+      throw new Error(`start watch more than once`)
     }
     this.filename = watchFilename;
     this._handle = (event, filename) => {

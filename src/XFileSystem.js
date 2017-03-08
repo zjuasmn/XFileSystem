@@ -141,6 +141,9 @@ export default class XFileSystem {
     this._watcher[abspath] && this._watcher[abspath].emit('watch', type, filename);
   }
   
+  _set(obj, propname, content) {
+    obj[propname] = content;
+  }
   /**
    * write helper
    * @param current parent content
@@ -156,16 +159,16 @@ export default class XFileSystem {
     let createNew = false;
     
     if (type == DIRECTORY) {
-      current[filename] = content;
+      this._set(current, filename, content);
     } else if (type == FILE) {
       if (content == null || content instanceof Buffer) {
         if (current[filename]) {
           current[filename].buffer = content;
         } else {
-          current[filename] = {buffer: content};
+          this._set(current, filename, {buffer: content});
         }
       } else {
-        current[filename] = content;
+        this._set(current, filename, content);
       }
     } else {
       throw new XFileSystemError(errors.code.UNKNOWN);
@@ -173,7 +176,7 @@ export default class XFileSystem {
     let ret = current[filename];
     if (!ret['']) {
       createNew = true;
-      ret[''] = {birthtime: new Date(), type};
+      this._set(ret, '', {birthtime: new Date(), type});
     }
     ret['']._time = new Date();
     ret['']._name = filename;
@@ -281,10 +284,8 @@ export default class XFileSystem {
         throw new XFileSystemError(errors.code.ENOENT, abspath);
       current = current[path[i]];
     }
-    if (isDir(current[path[i]])) {
+    if (isDir(current[path[i]]) || isFile(current[path[i]])) {
       throw new XFileSystemError(errors.code.EEXIST, abspath);
-    } else if (isFile(current[path[i]])) {
-      throw new XFileSystemError(errors.code.ENOTDIR, abspath);
     }
     this._write(current, abspath, {}, DIRECTORY);
   };
