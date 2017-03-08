@@ -42,12 +42,13 @@ export function needToFetchRemote(e, abspath) {
 const libPrefixLength = node_modules.length + 1;
 
 export default class XFileSystem {
-  data = {'': {birthtime: new Date(), type: DIRECTORY, _time: new Date(), _dir: null, _name: '/'}};
-  _fetch = null;
+  data = {};
+  _fetch;
   _watcher = {};
   
   constructor(fetch) {
     this._fetch = fetch;
+    this._set(this.data, '', {birthtime: new Date(), type: DIRECTORY, _time: new Date(), _dir: null, _name: '/'});
     this.mkdirSync(node_modules);
   }
   
@@ -144,6 +145,7 @@ export default class XFileSystem {
   _set(obj, propname, content) {
     obj[propname] = content;
   }
+  
   /**
    * write helper
    * @param current parent content
