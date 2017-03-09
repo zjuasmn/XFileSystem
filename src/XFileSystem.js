@@ -415,7 +415,7 @@ export default class XFileSystem {
     if (!filename || isDir(current[filename])) {
       throw new XFileSystemError(errors.code.EISDIR, abspath);
     }
-    this._write(current, abspath, encoding || typeof content === "string" ? new Buffer(content, encoding) : content, FILE)
+    this._write(current, abspath, !content || content instanceof Buffer ? content : new Buffer(content, encoding), FILE)
   }
   
   writeSync = NotImplemented;
