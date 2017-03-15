@@ -302,6 +302,28 @@ describe('XFileSystem', () => {
     expect(metaToAbspath(x)).to.equal('x');
   });
   
+  it('directory mtime should change if children added or removed', (done) => {
+    fs.mkdirSync('/a');
+    let mtime = fs.statSync('/a').mtime;
+    
+    setTimeout(() => {
+      fs.writeFileSync('/a/b', '1');
+      let mtime2 = fs.statSync('/a').mtime;
+      expect(mtime2.getTime()).to.greaterThan(mtime.getTime());
+      setTimeout(() => {
+        fs.writeFileSync('/a/b', '222');
+        let mtime3 = fs.statSync('/a').mtime;
+        expect(mtime3.getTime()).to.equal(mtime2.getTime());
+        setTimeout(() => {
+          fs.renameSync('/a/b', '/b');
+          let mtime4 = fs.statSync('/a').mtime;
+          expect(mtime4.getTime()).to.greaterThan(mtime3.getTime());
+          done();
+        }, 10);
+      }, 10);
+    }, 10);
+  });
+  
   it('should have all fs methods', () => {
     let fsMethods = [
       "access",

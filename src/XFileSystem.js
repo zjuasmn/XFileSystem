@@ -175,10 +175,14 @@ export default class XFileSystem {
     if (!ret['']) {
       createNew = true;
       this._set(ret, '', {birthtime: new Date(), type});
+      current['']._time = new Date();
     }
     ret['']._time = new Date();
     ret['']._name = filename;
-    ret['']._dir = current;
+    if (ret['']._dir != current) {
+      ret['']._dir = current;
+      current['']._time = new Date();
+    }
     this._emit(abspath, dirpath, filename, createNew ? 'rename' : 'change');
     return ret;
   }
@@ -197,6 +201,7 @@ export default class XFileSystem {
     }
     let ret = dir[filename];
     ret['']._dir = null;
+    dir['']._time = new Date();
     delete dir[filename];
     this._emit(abspath, dirpath, filename, 'rename');
     return ret;
