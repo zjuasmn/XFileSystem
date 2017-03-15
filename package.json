@@ -1,6 +1,6 @@
 {
   "name": "x-filesystem",
-  "version": "0.3.5",
+  "version": "0.3.6",
   "description": "In memory file system with node_module mapping to unpkg.com",
   "main": "index.js",
   "repository": "zjuasmn/xFileSystem",
