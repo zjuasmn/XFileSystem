@@ -125,13 +125,9 @@ export default class XFileSystem {
             } else {
               this.writeFileSync(abspath, textOrArray);
             }
-            try {
-              result = this[fn + 'Sync'](...args)
-            } catch (e) {
-              return callback(e);
-            }
-            return callback(null, result);
-          });
+            return callback(null, this[fn + 'Sync'](...args));
+          })
+          .catch(callback);
       }
       return callback(null, result);
     }
