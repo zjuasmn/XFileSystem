@@ -18,6 +18,8 @@ describe('XFileSystem', () => {
     expect(fs.data['a.js'].buffer.toString()).to.equal('123');
     fs.writeFileSync('/a.js', [52, 53, 54]);
     expect(fs.data['a.js'].buffer.toString()).to.equal('456');
+    fs.writeFileSync('/a.js', '');
+    expect(fs.data['a.js'].buffer.toString()).to.equal('');
     fs.writeFileSync('/b.js', '123', {encoding: 'utf8'});
     fs.writeFileSync('/c.js', new Buffer('123'));
     
