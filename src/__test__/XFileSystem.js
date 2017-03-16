@@ -211,10 +211,14 @@ describe('XFileSystem', () => {
   it('statSync should work', () => {
     expect(fs.statSync('/').isDirectory()).to.equal(true);
     expect(fs.statSync('/').mode).to.equal(16877);
+    expect(fs.statSync('/').ino).to.equal(1);
     expect(() => fs.statSync('/a')).to.throw('no such file or directory');
     fs.writeFileSync('/a', '123');
     expect(fs.statSync('/a').isFile()).to.equal(true);
     expect(fs.statSync('/a').isDirectory()).to.equal(false);
+    expect(fs.statSync('/a').ino).to.equal(3);
+    fs.renameSync('/a', '/b');
+    expect(fs.statSync('/b').ino).to.equal(3);
   });
   
   it('stat should work', (done) => {

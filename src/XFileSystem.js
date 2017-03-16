@@ -42,13 +42,22 @@ export function needToFetchRemote(e, abspath) {
 const libPrefixLength = node_modules.length + 1;
 
 export default class XFileSystem {
+  nextino;
   data = {};
   _fetch;
   _watcher = {};
   
   constructor(fetch) {
     this._fetch = fetch;
-    this._set(this.data, '', {birthtime: new Date(), type: DIRECTORY, _time: new Date(), _dir: null, _name: '/'});
+    this.nextino = 1;
+    this._set(this.data, '', {
+      birthtime: new Date(),
+      type: DIRECTORY,
+      _time: new Date(),
+      _dir: null,
+      _name: '/',
+      ino: this.nextino++,
+    });
     this.mkdirSync(node_modules);
   }
   
@@ -174,7 +183,7 @@ export default class XFileSystem {
     let ret = current[filename];
     if (!ret['']) {
       createNew = true;
-      this._set(ret, '', {birthtime: new Date(), type});
+      this._set(ret, '', {birthtime: new Date(), type, ino: this.nextino++});
       current['']._time = new Date();
     }
     ret['']._time = new Date();
@@ -262,6 +271,7 @@ export default class XFileSystem {
       isSymbolicLink: falseFn,
       isFIFO: falseFn,
       isSocket: falseFn,
+      ino: stat.ino,
       atime: _time,
       mtime: _time,
       ctime: _time,
