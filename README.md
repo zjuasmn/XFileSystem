@@ -5,7 +5,7 @@ Memory filesystem with `/node_modules` map to `unpkg.com`
 Inspired by [webpack/_memory-fs_](https://github.com/webpack/memory-fs), this project implement a simple in memory file system compatible with node.js built-in module `fs` API. It can run in node or browser environment.
 
 ```js
-var fs= require("x-filesystem').fs;
+var fs= require("x-filesystem").fs;
 
 fs.mkdirpSync("/a/test/dir");
 fs.writeFileSync("/a/test/dir/file.txt", "Hello World");
@@ -28,11 +28,12 @@ fs.rmdirSync("/a/test/dir");
 In async method, when callback is omitted, a promise would be return.
 
 ```js
-fs.readFile('/a/b.txt','utf8').then(content=>{...}).catch(e=>{...}) 
+fs.readFile('/a/b.txt','utf8').then(content=>{...}).catch(e=>{...})
 ```
 
-* 
+* serilize/deserilize support
 
 
- 
+
+
 
